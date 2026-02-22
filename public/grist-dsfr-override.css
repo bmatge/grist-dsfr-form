@@ -60,8 +60,43 @@ html[data-grist-form] body {
 }
 
 /* Le conteneur React de Grist — remplit l'espace entre header et footer */
-html[data-grist-form] body > div:not(.fr-header):not(.fr-footer) {
+html[data-grist-form] body > div:not(.fr-header):not(.fr-footer):not(script) {
   flex: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Tous les divs intermédiaires entre React root et le form */
+html[data-grist-form] body > div:not(.fr-header):not(.fr-footer) div {
+  max-height: none !important;
+}
+
+/* ==========================================================================
+   Suppression du cadre Grist (bordure bleue + barre "Grist Form")
+   Le JS le fait aussi via inline styles, mais le CSS sert de fallback.
+   ========================================================================== */
+
+/* Par data-testid (si présent) */
+html[data-grist-form] [data-testid="test-form-framing"] {
+  border: none !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+html[data-grist-form] [data-testid="test-form-framing"] > div:first-child {
+  display: none !important;
+}
+
+html[data-grist-form] [data-testid="test-form-page"] {
+  display: none !important;
 }
 
 /* ==========================================================================
