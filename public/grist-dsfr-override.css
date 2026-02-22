@@ -5,14 +5,23 @@
  * Ce CSS ne gère que la structure de page (flex body pour header/footer sticky).
  */
 
+html {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+}
+
 body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   margin: 0;
+  overflow: visible !important;
+  height: auto !important;
   background-color: var(--background-default-grey, #f6f6f6);
 }
 
 #dsfr-main {
   flex: 1;
+  overflow: visible !important;
 }

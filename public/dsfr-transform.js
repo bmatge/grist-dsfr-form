@@ -49,61 +49,80 @@
   /**
    * Parcourt récursivement les enfants d'un conteneur pour trouver
    * les sections du formulaire (headers, champs, séparateurs, submit).
+   *
+   * Heuristique clé : on compte les noms de champs (attribut name) distincts
+   * dans chaque div. Si > 1 nom → c'est un conteneur intermédiaire, on descend.
+   * Si == 1 → c'est un champ unique, on l'extrait.
    */
   function collectSections(container, sections, depth) {
+    if (depth > 15) return; // garde-fou
+
     for (const child of container.children) {
       if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE') continue;
-      if (child.offsetParent === null && child.style.display === 'none') continue;
 
       // Séparateur
-      if (child.tagName === 'HR' || child.querySelector(':scope > hr')) {
+      if (child.tagName === 'HR' || (child.children.length <= 2 && child.querySelector(':scope > hr'))) {
         sections.push({ type: 'separator' });
         continue;
       }
 
-      // Bouton submit
-      const submitBtn = child.querySelector('button[type="submit"]');
-      if (submitBtn) {
-        sections.push({
-          type: 'submit',
-          text: submitBtn.textContent.trim(),
-          gristButton: submitBtn,
-        });
+      // Compter les noms de champs distincts dans ce div
+      const inputs = child.querySelectorAll('input, select, textarea');
+      const fieldNames = new Set();
+      inputs.forEach(i => { if (i.name) fieldNames.add(i.name); });
+      const hasInput = inputs.length > 0;
+      const hasLabel = !!child.querySelector('label');
+
+      // Section titre (heading sans champs de saisie)
+      if (!hasInput) {
+        const heading = child.querySelector('h1, h2, h3');
+        if (heading) {
+          const paragraphs = child.querySelectorAll('p');
+          sections.push({
+            type: 'header',
+            level: parseInt(heading.tagName[1]),
+            title: heading.textContent.trim(),
+            description: Array.from(paragraphs).map(p => p.textContent.trim()).filter(Boolean).join('\n'),
+          });
+          continue;
+        }
+
+        // Bouton submit seul (sans champs)
+        const submitBtn = child.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          sections.push({
+            type: 'submit',
+            text: submitBtn.textContent.trim(),
+            gristButton: submitBtn,
+          });
+          continue;
+        }
+
+        // Paragraphe isolé
+        const text = child.textContent.trim();
+        if (text) {
+          sections.push({ type: 'paragraph', text });
+        }
         continue;
       }
 
-      const hasInput = child.querySelector('input, select, textarea');
-      const hasLabel = child.querySelector('label');
-
-      // Section titre (h1/h2/h3 sans champs de saisie)
-      const heading = child.querySelector('h1, h2, h3');
-      if (heading && !hasInput) {
-        const paragraphs = child.querySelectorAll('p');
-        sections.push({
-          type: 'header',
-          level: parseInt(heading.tagName[1]),
-          title: heading.textContent.trim(),
-          description: Array.from(paragraphs).map(p => p.textContent.trim()).filter(Boolean).join('\n'),
-        });
-        continue;
-      }
-
-      // Champ de formulaire
-      if (hasInput && hasLabel) {
-        const field = extractField(child);
-        if (field) { sections.push(field); continue; }
-      }
-
-      // Conteneur intermédiaire : descendre d'un niveau
-      if (child.children.length > 1 && child.querySelector('label')) {
+      // Plusieurs noms de champs → conteneur intermédiaire, descendre
+      if (fieldNames.size > 1) {
         collectSections(child, sections, depth + 1);
         continue;
       }
 
-      // Paragraphe isolé
-      const text = child.textContent.trim();
-      if (text && !hasInput) {
-        sections.push({ type: 'paragraph', text });
+      // Un seul nom de champ + label → c'est un champ
+      if (fieldNames.size === 1 && hasLabel) {
+        const field = extractField(child);
+        if (field) { sections.push(field); continue; }
+      }
+
+      // Un seul nom mais pas de label, ou extractField a échoué →
+      // c'est peut-être un conteneur avec un submit + des enfants
+      if (child.children.length > 0 && (hasLabel || child.querySelector('button[type="submit"]'))) {
+        collectSections(child, sections, depth + 1);
+        continue;
       }
     }
   }
