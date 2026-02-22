@@ -1,16 +1,18 @@
 /**
  * DSFR Override pour formulaires Grist natifs
  *
- * Cible le DOM généré par form.bundle.js via html[data-grist-form].
- * Les classes _grainN_ sont instables → on utilise les éléments HTML natifs,
- * les classes stables (grist-radio-list, grist-checkbox-list, field_clip),
- * les data-testid et les sélecteurs structurels.
+ * Fonctionne avec dsfr-transform.js qui ajoute les classes DSFR
+ * (fr-input, fr-select, fr-label, fr-btn, etc.) aux éléments du formulaire.
  *
- * Toutes les règles utilisent !important pour overrider le CSS-in-JS de Grist.
+ * Ce CSS :
+ * - Fournit les variables DSFR en fallback
+ * - Override les styles CSS-in-JS de Grist avec !important
+ * - Gère les cas radio/checkbox (structure Grist != structure DSFR)
+ * - Assure le layout global (header DSFR, contenu flex, footer DSFR)
  */
 
 /* ==========================================================================
-   Variables DSFR
+   Variables DSFR (fallback si le CDN ne charge pas)
    ========================================================================== */
 
 :root {
@@ -27,14 +29,7 @@
   --dsfr-background-contrast: #EEEEEE;
   --dsfr-error: #CE0500;
   --dsfr-success: #18753C;
-  --dsfr-info: #0063CB;
   --dsfr-font-family: "Marianne", arial, sans-serif;
-  --dsfr-spacing-1v: 0.25rem;
-  --dsfr-spacing-2v: 0.5rem;
-  --dsfr-spacing-3v: 0.75rem;
-  --dsfr-spacing-4v: 1rem;
-  --dsfr-spacing-6v: 1.5rem;
-  --dsfr-spacing-8v: 2rem;
 }
 
 /* ==========================================================================
@@ -55,7 +50,7 @@ html[data-grist-form] body {
 }
 
 /* ==========================================================================
-   Layout général : page flex avec header/footer DSFR
+   Layout : page flex avec header DSFR en haut, footer en bas
    ========================================================================== */
 
 html[data-grist-form] body {
@@ -64,50 +59,21 @@ html[data-grist-form] body {
   min-height: 100vh !important;
 }
 
-/* Le conteneur React de Grist — devient le main content qui s'étend */
-html[data-grist-form] body > div:not(#dsfr-header):not(#dsfr-footer):not(.fr-header):not(.fr-footer) {
+/* Le conteneur React de Grist — remplit l'espace entre header et footer */
+html[data-grist-form] body > div:not(.fr-header):not(.fr-footer) {
   flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
 /* ==========================================================================
-   Suppression du cadre Grist (bordure bleue + barre "Grist Form")
+   Conteneur du formulaire
    ========================================================================== */
 
-/* Tout le framing Grist — supprimer bordures, padding, arrondis */
-html[data-grist-form] [data-testid="test-form-framing"] {
-  border: none !important;
-  border-top: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  max-width: 100% !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  margin: 0 !important;
-}
-
-/* La barre "Grist Form" dans le bandeau bleu — masquer */
-html[data-grist-form] [data-testid="test-form-framing"] > div:first-child {
-  display: none !important;
-}
-
-/* Le footer Grist natif "Powered by Grist" — masquer (remplacé par le footer DSFR) */
-html[data-grist-form] [data-testid="test-form-page"] {
-  display: none !important;
-}
-
-/* ==========================================================================
-   Grille DSFR autour du formulaire
-   ========================================================================== */
-
-/* Le wrapper <main> qui contient le form — grille DSFR centrée */
 html[data-grist-form] main {
   flex: 1 !important;
   display: flex !important;
   justify-content: center !important;
   padding: 2rem 1rem !important;
-  max-width: 78rem !important;  /* fr-container max-width */
+  max-width: 78rem !important;
   margin-left: auto !important;
   margin-right: auto !important;
   width: 100% !important;
@@ -125,50 +91,36 @@ html[data-grist-form] form {
   box-sizing: border-box !important;
 }
 
-/* Sections dans le formulaire */
+/* Espacement entre les questions */
 html[data-grist-form] form > div {
-  margin-bottom: var(--dsfr-spacing-6v) !important;
+  margin-bottom: 1.5rem !important;
 }
 
 /* ==========================================================================
-   Labels
+   Labels (classe fr-label ajoutée par JS)
    ========================================================================== */
 
-html[data-grist-form] form label {
+html[data-grist-form] form .fr-label,
+html[data-grist-form] form label:not(:has(input)) {
   display: block !important;
   font-family: var(--dsfr-font-family) !important;
   font-size: 1rem !important;
   line-height: 1.5rem !important;
   font-weight: 700 !important;
   color: var(--dsfr-text-label) !important;
-  margin-bottom: var(--dsfr-spacing-1v) !important;
+  margin-bottom: 0.25rem !important;
 }
 
-/* Labels dans les groupes radio/checkbox — poids normal */
-html[data-grist-form] .grist-radio-list label,
-html[data-grist-form] .grist-checkbox-list label,
-html[data-grist-form] [role="group"] label {
-  display: flex !important;
-  align-items: center !important;
-  gap: var(--dsfr-spacing-3v) !important;
-  font-weight: 400 !important;
-  font-size: 1rem !important;
-  line-height: 1.5rem !important;
-  cursor: pointer !important;
-  padding: var(--dsfr-spacing-2v) 0 !important;
-  margin-bottom: 0 !important;
-}
-
-/* Indicateur "requis" (astérisque) */
-html[data-grist-form] form label span[class*="-required"]::after,
-html[data-grist-form] form label[class*="-required"]::after {
+/* Indicateur requis (astérisque) */
+html[data-grist-form] form label span[class*="required"]::after {
   color: var(--dsfr-error) !important;
 }
 
 /* ==========================================================================
-   Champs de saisie (Input, Textarea)
+   Inputs texte (classe fr-input ajoutée par JS)
    ========================================================================== */
 
+html[data-grist-form] form .fr-input,
 html[data-grist-form] form input[type="text"],
 html[data-grist-form] form input[type="number"],
 html[data-grist-form] form input[type="email"],
@@ -185,11 +137,10 @@ html[data-grist-form] form input[type="time"] {
   line-height: 1.5rem !important;
   padding: 0.5rem 1rem !important;
   height: 2.5rem !important;
-  background-color: var(--dsfr-background-default) !important;
+  background-color: var(--dsfr-background-alt) !important;
   border: none !important;
   border-bottom: 2px solid var(--dsfr-border-default) !important;
   border-radius: 0.25rem 0.25rem 0 0 !important;
-  background-color: var(--dsfr-background-alt) !important;
   outline: none !important;
   color: var(--dsfr-text-default) !important;
   box-sizing: border-box !important;
@@ -199,20 +150,15 @@ html[data-grist-form] form input[type="time"] {
   transition: border-color 0.2s ease !important;
 }
 
-html[data-grist-form] form input[type="text"]:focus,
-html[data-grist-form] form input[type="number"]:focus,
-html[data-grist-form] form input[type="email"]:focus,
-html[data-grist-form] form input[type="tel"]:focus,
-html[data-grist-form] form input[type="url"]:focus,
-html[data-grist-form] form input[type="password"]:focus,
-html[data-grist-form] form input[type="date"]:focus,
-html[data-grist-form] form input[type="datetime-local"]:focus,
-html[data-grist-form] form input[type="time"]:focus {
+html[data-grist-form] form .fr-input:focus,
+html[data-grist-form] form input:focus {
   border-bottom-color: var(--dsfr-border-active) !important;
   outline: none !important;
 }
 
-html[data-grist-form] form textarea {
+/* Textarea */
+html[data-grist-form] form textarea,
+html[data-grist-form] form textarea.fr-input {
   display: block !important;
   width: 100% !important;
   font-family: var(--dsfr-font-family) !important;
@@ -220,6 +166,7 @@ html[data-grist-form] form textarea {
   line-height: 1.5rem !important;
   padding: 0.5rem 1rem !important;
   min-height: 10rem !important;
+  height: auto !important;
   background-color: var(--dsfr-background-alt) !important;
   border: none !important;
   border-bottom: 2px solid var(--dsfr-border-default) !important;
@@ -232,14 +179,11 @@ html[data-grist-form] form textarea {
   transition: border-color 0.2s ease !important;
 }
 
-html[data-grist-form] form textarea:focus {
-  border-bottom-color: var(--dsfr-border-active) !important;
-}
-
 /* ==========================================================================
-   Select
+   Select (classe fr-select ajoutée par JS)
    ========================================================================== */
 
+html[data-grist-form] form .fr-select,
 html[data-grist-form] form select {
   display: block !important;
   width: 100% !important;
@@ -267,18 +211,6 @@ html[data-grist-form] form select {
 
 html[data-grist-form] form select:focus {
   border-bottom-color: var(--dsfr-border-active) !important;
-}
-
-/* Le custom select overlay de Grist (searchable select) — le masquer
-   et laisser le <select> natif visible pour garder le style DSFR */
-html[data-grist-form] [data-testid="test-form-search-select"] {
-  display: none !important;
-}
-
-html[data-grist-form] form select {
-  position: relative !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
 }
 
 /* ==========================================================================
@@ -311,15 +243,30 @@ html[data-grist-form] form input[type="radio"]:focus-visible {
   outline-offset: 2px !important;
 }
 
-/* Groupe radio */
+/* Groupe radio — layout */
 html[data-grist-form] .grist-radio-list,
-html[data-grist-form] form [role="group"]:has(input[type="radio"]) {
+html[data-grist-form] form [role="group"] {
   display: flex !important;
   flex-direction: column !important;
   gap: 0 !important;
   border: none !important;
   padding: 0 !important;
   margin: 0 !important;
+}
+
+/* Labels dans les groupes radio/checkbox — poids normal, flex */
+html[data-grist-form] .grist-radio-list label,
+html[data-grist-form] .grist-checkbox-list label,
+html[data-grist-form] form [role="group"] label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  font-weight: 400 !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  cursor: pointer !important;
+  padding: 0.5rem 0 !important;
+  margin-bottom: 0 !important;
 }
 
 /* ==========================================================================
@@ -376,17 +323,17 @@ html[data-grist-form] .grist-checkbox-list {
 }
 
 /* ==========================================================================
-   Toggle switch → afficher en checkbox DSFR classique
+   Toggle switch → checkbox DSFR
    ========================================================================== */
 
 html[data-grist-form] [data-testid="test-toggle-switch"] {
   display: flex !important;
   align-items: center !important;
-  gap: var(--dsfr-spacing-3v) !important;
+  gap: 0.75rem !important;
   cursor: pointer !important;
 }
 
-/* Masquer le slider du toggle, la checkbox native est déjà stylée */
+/* Masquer le slider du toggle */
 html[data-grist-form] [data-testid="test-toggle-switch"] > div:has([data-testid="test-toggle-switch-slider"]) {
   display: none !important;
 }
@@ -395,14 +342,13 @@ html[data-grist-form] [data-testid="test-toggle-switch"] > div:has([data-testid=
    Upload de fichiers
    ========================================================================== */
 
-html[data-grist-form] form input[type="file"],
-html[data-grist-form] form .field_clip {
+html[data-grist-form] form input[type="file"] {
   display: block !important;
   width: 100% !important;
   font-family: var(--dsfr-font-family) !important;
   font-size: 1rem !important;
   color: var(--dsfr-text-default) !important;
-  padding: var(--dsfr-spacing-2v) 0 !important;
+  padding: 0.5rem 0 !important;
   cursor: pointer !important;
 }
 
@@ -414,9 +360,9 @@ html[data-grist-form] form input[type="file"]::file-selector-button {
   background-color: var(--dsfr-background-default) !important;
   border: 1px solid var(--dsfr-blue-france) !important;
   border-radius: 0 !important;
-  padding: var(--dsfr-spacing-1v) var(--dsfr-spacing-4v) !important;
+  padding: 0.25rem 1rem !important;
   cursor: pointer !important;
-  margin-right: var(--dsfr-spacing-4v) !important;
+  margin-right: 1rem !important;
   transition: background-color 0.2s ease !important;
 }
 
@@ -425,9 +371,10 @@ html[data-grist-form] form input[type="file"]::file-selector-button:hover {
 }
 
 /* ==========================================================================
-   Bouton de soumission
+   Bouton de soumission (classe fr-btn ajoutée par JS)
    ========================================================================== */
 
+html[data-grist-form] form .fr-btn,
 html[data-grist-form] form button[type="submit"] {
   display: inline-flex !important;
   align-items: center !important;
@@ -463,14 +410,9 @@ html[data-grist-form] form button[type="submit"][aria-disabled="true"] {
   cursor: not-allowed !important;
 }
 
-html[data-grist-form] form button[type="submit"]:focus-visible {
-  outline: 2px solid var(--dsfr-blue-france) !important;
-  outline-offset: 2px !important;
-}
-
-/* Bouton Reset */
-html[data-grist-form] form button[type="button"],
-html[data-grist-form] [data-testid="test-form-reset"] {
+/* Bouton secondaire (reset, etc.) */
+html[data-grist-form] form .fr-btn--secondary,
+html[data-grist-form] form button[type="button"] {
   font-family: var(--dsfr-font-family) !important;
   font-size: 1rem !important;
   font-weight: 500 !important;
@@ -499,19 +441,8 @@ html[data-grist-form] form h3 {
   color: var(--dsfr-text-default) !important;
 }
 
-html[data-grist-form] form h1 {
-  font-size: 1.75rem !important;
-  line-height: 2.25rem !important;
-  font-weight: 700 !important;
-  margin-bottom: var(--dsfr-spacing-4v) !important;
-}
-
-html[data-grist-form] form h2 {
-  font-size: 1.375rem !important;
-  line-height: 1.75rem !important;
-  font-weight: 700 !important;
-  margin-bottom: var(--dsfr-spacing-3v) !important;
-}
+html[data-grist-form] form h1 { font-size: 1.75rem !important; font-weight: 700 !important; }
+html[data-grist-form] form h2 { font-size: 1.375rem !important; font-weight: 700 !important; }
 
 html[data-grist-form] form p {
   font-family: var(--dsfr-font-family) !important;
@@ -523,14 +454,8 @@ html[data-grist-form] form p {
 html[data-grist-form] form hr {
   border: none !important;
   border-top: 1px solid var(--dsfr-border-default) !important;
-  margin: var(--dsfr-spacing-6v) 0 !important;
+  margin: 1.5rem 0 !important;
 }
-
-/* ==========================================================================
-   Footer DSFR (injecté par le proxy — le footer Grist natif est masqué)
-   ========================================================================== */
-
-/* Le footer DSFR est géré nativement par les classes fr-footer */
 
 /* ==========================================================================
    Page de succès
@@ -539,18 +464,7 @@ html[data-grist-form] form hr {
 html[data-grist-form] [class*="success"],
 html[data-grist-form] .test-form-success-page {
   text-align: center !important;
-  padding: var(--dsfr-spacing-8v) !important;
-  font-family: var(--dsfr-font-family) !important;
-}
-
-/* ==========================================================================
-   Page d'erreur
-   ========================================================================== */
-
-html[data-grist-form] [class*="error-page"],
-html[data-grist-form] .test-form-error-page {
-  text-align: center !important;
-  padding: var(--dsfr-spacing-8v) !important;
+  padding: 2rem !important;
   font-family: var(--dsfr-font-family) !important;
 }
 

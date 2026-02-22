@@ -213,6 +213,7 @@ async function handleFormProxy(req, res) {
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
     doc.documentElement.setAttribute('data-fr-scheme', 'light');
+    doc.documentElement.setAttribute('data-grist-form', '');
 
     // Injection CSS dans <head>
     doc.head.insertAdjacentHTML('beforeend', `
@@ -280,6 +281,7 @@ async function handleFormProxy(req, res) {
       </footer>
       <script type="module" src="${DSFR_JS_MODULE}"></script>
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
+      <script src="${proxyBaseUrl}/static/dsfr-transform.js" defer></script>
     `);
 
     const output = dom.serialize();
