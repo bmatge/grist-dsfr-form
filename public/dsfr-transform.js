@@ -154,6 +154,8 @@
       for (const el of mainLabel.parentElement.children) {
         if (el === mainLabel) continue;
         if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') continue;
+        // Ignorer les conteneurs qui ont des inputs (listes de radios/checkboxes)
+        if (el.querySelector('input, select, textarea')) continue;
         const t = el.textContent.trim();
         if (t && t !== '*' && t !== labelText) { description = t; break; }
       }
@@ -266,12 +268,41 @@
     return input.value;
   }
 
+  // ── Extraction du titre (hors <form>) ──────────────────────────
+
+  /**
+   * Le titre et la description du formulaire sont rendus par Grist
+   * en dehors du <form>, dans un div frère. On les récupère ici.
+   */
+  function extractFormTitle(form) {
+    const parent = form.parentElement;
+    if (!parent) return null;
+
+    for (const sibling of parent.children) {
+      if (sibling === form) break; // ne regarder que les éléments avant le form
+      const heading = sibling.querySelector('h1, h2, h3');
+      if (heading) {
+        const paragraphs = sibling.querySelectorAll('p');
+        return {
+          type: 'header',
+          level: parseInt(heading.tagName[1]),
+          title: heading.textContent.trim(),
+          description: Array.from(paragraphs)
+            .map(p => p.textContent.trim())
+            .filter(Boolean)
+            .join('\n'),
+        };
+      }
+    }
+    return null;
+  }
+
   // ── Construction du formulaire DSFR ─────────────────────────────
 
   function buildDsfrPage(sections) {
     const main = document.createElement('main');
     main.id = 'dsfr-main';
-    main.className = 'fr-py-4w';
+    main.className = 'fr-py-6w';
 
     const container = document.createElement('div');
     container.className = 'fr-container';
@@ -280,7 +311,7 @@
     row.className = 'fr-grid-row fr-grid-row--center';
 
     const col = document.createElement('div');
-    col.className = 'fr-col-12 fr-col-md-10 fr-col-lg-8';
+    col.className = 'fr-col-12 fr-col-md-10 fr-col-lg-8 fr-p-3w';
 
     const form = document.createElement('form');
     form.id = 'dsfr-form';
@@ -624,6 +655,18 @@
 
     console.log('[DSFR] Extraction des champs…');
     const sections = extractFormContent(gristForm);
+
+    // Extraire le titre du formulaire (il est hors du <form> dans le DOM Grist)
+    const formTitle = extractFormTitle(gristForm);
+    if (formTitle) {
+      // Mettre à jour le header DSFR avec le vrai titre
+      const headerServiceTitle = document.querySelector('.fr-header__service-title');
+      if (headerServiceTitle) headerServiceTitle.textContent = formTitle.title;
+
+      // Ajouter titre + description en tête des sections
+      sections.unshift(formTitle);
+    }
+
     console.log('[DSFR] Sections extraites:', sections.map(s =>
       s.type === 'field' ? `${s.inputType}:${s.name}` : s.type
     ));
