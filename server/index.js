@@ -23,8 +23,7 @@ const DSFR_JS_NOMODULE = `https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@${DSFR_VERSI
 // Derrière un reverse proxy (Traefik), faire confiance au header X-Forwarded-Proto
 app.set('trust proxy', true);
 
-// Headers de sécurité (remplace security-headers@file de Traefik
-// qui écrasait notre CSP adaptée au proxy Grist)
+// Headers de sécurité
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -37,6 +36,43 @@ app.use((req, res, next) => {
 
 // Servir la CSS override en statique
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+
+// Proxy des assets Grist — sert les fichiers statiques de Grist à travers
+// notre serveur pour satisfaire la CSP 'self' de Traefik
+app.get('/grist-assets/:gristHost/*', async (req, res) => {
+  const { gristHost } = req.params;
+  const assetPath = req.params[0];
+
+  // Vérifier que le host est autorisé
+  if (!ALLOWED_HOSTS.some(host => gristHost === host || gristHost.endsWith('.' + host))) {
+    return res.status(403).send('Domaine non autorisé');
+  }
+
+  try {
+    const assetUrl = `https://${gristHost}/${assetPath}`;
+    const response = await fetch(assetUrl, {
+      headers: { 'Accept-Encoding': 'identity' },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).send('Asset non trouvé');
+    }
+
+    // Transmettre le Content-Type d'origine
+    const contentType = response.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+
+    // Cache 1h pour les assets statiques
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.write(buffer);
+    res.end();
+  } catch (e) {
+    console.error('Erreur proxy asset:', e);
+    res.status(502).send('Erreur proxy asset');
+  }
+});
 
 // Page d'accueil
 app.get('/', (req, res) => {
@@ -66,7 +102,6 @@ async function handleProxy(req, res) {
   }
 
   try {
-    // Demander du contenu non-compressé pour éviter les problèmes d'encodage
     const response = await fetch(formUrl, {
       headers: {
         'Accept': 'text/html',
@@ -86,31 +121,52 @@ async function handleProxy(req, res) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Réécrire <base href> pour que toutes les URLs relatives pointent vers Grist
-    const gristOrigin = parsed.origin;
+    const gristHost = parsed.hostname;
+
+    // Récupérer le base href pour résoudre les chemins relatifs
     const baseEl = doc.querySelector('base[href]');
-    if (baseEl) {
-      const baseHref = baseEl.getAttribute('href');
-      // Transformer le chemin relatif en URL absolue vers le serveur Grist
-      if (baseHref && !baseHref.startsWith('http')) {
-        baseEl.setAttribute('href', gristOrigin + baseHref);
+    const baseHref = baseEl ? baseEl.getAttribute('href') : '/';
+
+    // Supprimer <base> (bloqué par CSP base-uri 'self')
+    if (baseEl) baseEl.remove();
+
+    // Réécrire les URLs relatives des scripts pour passer par notre proxy
+    doc.querySelectorAll('script[src]').forEach(el => {
+      const src = el.getAttribute('src');
+      if (src && !src.startsWith('http')) {
+        const resolved = baseHref + src;
+        el.setAttribute('src', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
       }
-    } else {
-      // Pas de <base>, ajouter une qui pointe vers l'origin Grist
-      doc.head.insertAdjacentHTML('afterbegin', `<base href="${gristOrigin}/">`);
-    }
+    });
+
+    // Réécrire les URLs relatives des link/css
+    doc.querySelectorAll('link[href]').forEach(el => {
+      const href = el.getAttribute('href');
+      if (href && !href.startsWith('http')) {
+        const resolved = baseHref + href;
+        el.setAttribute('href', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
+      }
+    });
+
+    // Réécrire les URLs relatives des images
+    doc.querySelectorAll('img[src]').forEach(el => {
+      const src = el.getAttribute('src');
+      if (src && !src.startsWith('http')) {
+        const resolved = baseHref + src;
+        el.setAttribute('src', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
+      }
+    });
 
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
     doc.documentElement.setAttribute('data-fr-scheme', 'light');
 
     // Injection CSS dans <head>
-    const overrideCssUrl = `${req.protocol}://${req.get('host')}/static/grist-dsfr-override.css`;
     const head = doc.head;
     head.insertAdjacentHTML('beforeend', `
       <link rel="stylesheet" href="${DSFR_CSS}">
       <link rel="stylesheet" href="${DSFR_ICONS}">
-      <link rel="stylesheet" href="${overrideCssUrl}">
+      <link rel="stylesheet" href="/static/grist-dsfr-override.css">
       <meta name="theme-color" content="#000091">
     `);
 
@@ -123,25 +179,9 @@ async function handleProxy(req, res) {
 
     // Répondre avec du HTML propre
     const output = dom.serialize();
-
-    // CSP adaptée : autoriser les ressources Grist, le CDN DSFR, et notre propre serveur
-    const csp = [
-      `default-src 'self' ${gristOrigin}`,
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${gristOrigin} https://cdn.jsdelivr.net`,
-      `style-src 'self' 'unsafe-inline' ${gristOrigin} https://cdn.jsdelivr.net`,
-      `img-src 'self' data: ${gristOrigin} https:`,
-      `font-src 'self' data: ${gristOrigin} https://cdn.jsdelivr.net`,
-      `connect-src 'self' ${gristOrigin}`,
-      `form-action 'self' ${gristOrigin}`,
-      `base-uri 'self' ${gristOrigin}`,
-    ].join('; ');
-
     res.removeHeader('Content-Encoding');
     res.removeHeader('Content-Length');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Content-Security-Policy', csp);
-    // Utiliser write/end au lieu de send pour ne pas fixer Content-Length
-    // (Traefik peut compresser le body, invalidant un Content-Length fixe)
     res.write(output);
     res.end();
   } catch (e) {

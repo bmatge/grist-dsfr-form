@@ -26,10 +26,8 @@ services:
       - "traefik.http.routers.gristform-https.tls=true"
       - "traefik.http.routers.gristform-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.gristform-https.tls.options=anssi-strict@file"
-      # Middleware custom pour écraser la CSP globale de Traefik
-      # (security-headers@file est appliqué au niveau entrypoint)
-      - "traefik.http.routers.gristform-https.middlewares=gristform-csp"
-      - "traefik.http.middlewares.gristform-csp.headers.customResponseHeaders.Content-Security-Policy=default-src 'self' https://grist.numerique.gouv.fr https://docs.getgrist.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://grist.numerique.gouv.fr https://docs.getgrist.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://grist.numerique.gouv.fr https://docs.getgrist.com https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https://grist.numerique.gouv.fr https://docs.getgrist.com; form-action 'self' https://grist.numerique.gouv.fr https://docs.getgrist.com; base-uri 'self' https://grist.numerique.gouv.fr https://docs.getgrist.com"
+      # Pas besoin de middleware CSP custom : les assets Grist sont servis
+      # via /grist-assets/ (même origin = 'self'), compatible avec la CSP globale
 
       # Service
       - "traefik.http.services.gristform.loadbalancer.server.port=3000"
