@@ -109,11 +109,29 @@ async function handleProxy(req, res) {
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
     `);
 
-    // Répondre avec du HTML propre, sans headers d'encodage hérités
+    // Répondre avec du HTML propre
+    const output = dom.serialize();
+
+    // CSP adaptée : autoriser les ressources Grist, le CDN DSFR, et notre propre serveur
+    const csp = [
+      `default-src 'self' ${gristOrigin}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${gristOrigin} https://cdn.jsdelivr.net`,
+      `style-src 'self' 'unsafe-inline' ${gristOrigin} https://cdn.jsdelivr.net`,
+      `img-src 'self' data: ${gristOrigin} https:`,
+      `font-src 'self' data: ${gristOrigin} https://cdn.jsdelivr.net`,
+      `connect-src 'self' ${gristOrigin}`,
+      `form-action 'self' ${gristOrigin}`,
+      `base-uri 'self' ${gristOrigin}`,
+    ].join('; ');
+
     res.removeHeader('Content-Encoding');
     res.removeHeader('Content-Length');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(dom.serialize());
+    res.setHeader('Content-Security-Policy', csp);
+    // Utiliser write/end au lieu de send pour ne pas fixer Content-Length
+    // (Traefik peut compresser le body, invalidant un Content-Length fixe)
+    res.write(output);
+    res.end();
   } catch (e) {
     console.error('Erreur proxy:', e);
     res.status(502).send(`Erreur proxy : ${e.message}`);
