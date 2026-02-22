@@ -332,8 +332,7 @@
   function buildDsfrPage(sections) {
     const main = document.createElement('main');
     main.id = 'dsfr-main';
-    main.className = 'fr-py-6w';
-    main.style.padding = '3rem 1rem';
+    main.className = 'fr-py-4w';
 
     const container = document.createElement('div');
     container.className = 'fr-container';
@@ -342,8 +341,7 @@
     row.className = 'fr-grid-row fr-grid-row--center';
 
     const col = document.createElement('div');
-    col.className = 'fr-col-12 fr-col-md-10 fr-col-lg-8';
-    col.style.padding = '2rem';
+    col.className = 'fr-col-12 fr-mx-1w';
 
     const form = document.createElement('form');
     form.id = 'dsfr-form';
