@@ -43,8 +43,7 @@ app.get('/grist-assets/:gristHost/*', async (req, res) => {
   const { gristHost } = req.params;
   const assetPath = req.params[0];
 
-  // Vérifier que le host est autorisé
-  if (!ALLOWED_HOSTS.some(host => gristHost === host || gristHost.endsWith('.' + host))) {
+  if (!isAllowedHost(gristHost)) {
     return res.status(403).send('Domaine non autorisé');
   }
 
@@ -58,11 +57,8 @@ app.get('/grist-assets/:gristHost/*', async (req, res) => {
       return res.status(response.status).send('Asset non trouvé');
     }
 
-    // Transmettre le Content-Type d'origine
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);
-
-    // Cache 1h pour les assets statiques
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -74,32 +70,47 @@ app.get('/grist-assets/:gristHost/*', async (req, res) => {
   }
 });
 
-// Page d'accueil
+// Page d'accueil — avec ?url= on redirige vers le bon chemin
 app.get('/', (req, res) => {
   if (!req.query.url) {
     return res.send(landingPage(req));
   }
 
-  handleProxy(req, res);
-});
-
-async function handleProxy(req, res) {
-  const formUrl = req.query.url;
-
-  // Validation URL
+  // Rediriger /?url=https://grist.host/o/org/forms/id/n
+  // vers /o/org/forms/id/n?host=grist.host
   let parsed;
   try {
-    parsed = new URL(formUrl);
+    parsed = new URL(req.query.url);
   } catch {
     return res.status(400).send('URL invalide');
   }
 
-  // Whitelist
-  if (!ALLOWED_HOSTS.some(host => parsed.hostname === host || parsed.hostname.endsWith('.' + host))) {
+  if (!isAllowedHost(parsed.hostname)) {
     return res.status(403).send(
       `Domaine non autorisé : ${parsed.hostname}. Autorisés : ${ALLOWED_HOSTS.join(', ')}`
     );
   }
+
+  const targetPath = parsed.pathname + `?host=${encodeURIComponent(parsed.hostname)}`;
+  res.redirect(targetPath);
+});
+
+// Route principale : proxy du formulaire Grist au même chemin
+// Grist utilise window.location.pathname pour parser l'URL state,
+// donc on doit servir le HTML au même chemin que sur le serveur Grist
+app.get('/o/*/forms/*', handleFormProxy);
+// Certains formulaires utilisent /forms/ sans /o/org/
+app.get('/forms/*', handleFormProxy);
+
+async function handleFormProxy(req, res) {
+  // Le host Grist vient du query param ?host= (posé par la redirection depuis /?url=)
+  const gristHost = req.query.host || ALLOWED_HOSTS[0];
+
+  if (!isAllowedHost(gristHost)) {
+    return res.status(403).send('Domaine non autorisé');
+  }
+
+  const formUrl = `https://${gristHost}${req.path}`;
 
   try {
     const response = await fetch(formUrl, {
@@ -121,8 +132,6 @@ async function handleProxy(req, res) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    const gristHost = parsed.hostname;
-
     // Récupérer le base href pour résoudre les chemins relatifs
     const baseEl = doc.querySelector('base[href]');
     const baseHref = baseEl ? baseEl.getAttribute('href') : '/';
@@ -130,40 +139,17 @@ async function handleProxy(req, res) {
     // Supprimer <base> (bloqué par CSP base-uri 'self')
     if (baseEl) baseEl.remove();
 
-    // Réécrire les URLs relatives des scripts pour passer par notre proxy
-    doc.querySelectorAll('script[src]').forEach(el => {
-      const src = el.getAttribute('src');
-      if (src && !src.startsWith('http')) {
-        const resolved = baseHref + src;
-        el.setAttribute('src', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
-      }
-    });
-
-    // Réécrire les URLs relatives des link/css
-    doc.querySelectorAll('link[href]').forEach(el => {
-      const href = el.getAttribute('href');
-      if (href && !href.startsWith('http')) {
-        const resolved = baseHref + href;
-        el.setAttribute('href', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
-      }
-    });
-
-    // Réécrire les URLs relatives des images
-    doc.querySelectorAll('img[src]').forEach(el => {
-      const src = el.getAttribute('src');
-      if (src && !src.startsWith('http')) {
-        const resolved = baseHref + src;
-        el.setAttribute('src', `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
-      }
-    });
+    // Réécrire les URLs relatives pour passer par notre proxy d'assets
+    rewriteRelativeUrls(doc, 'script[src]', 'src', baseHref, gristHost);
+    rewriteRelativeUrls(doc, 'link[href]', 'href', baseHref, gristHost);
+    rewriteRelativeUrls(doc, 'img[src]', 'src', baseHref, gristHost);
 
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
     doc.documentElement.setAttribute('data-fr-scheme', 'light');
 
     // Injection CSS dans <head>
-    const head = doc.head;
-    head.insertAdjacentHTML('beforeend', `
+    doc.head.insertAdjacentHTML('beforeend', `
       <link rel="stylesheet" href="${DSFR_CSS}">
       <link rel="stylesheet" href="${DSFR_ICONS}">
       <link rel="stylesheet" href="/static/grist-dsfr-override.css">
@@ -171,13 +157,11 @@ async function handleProxy(req, res) {
     `);
 
     // Injection JS avant </body>
-    const body = doc.body;
-    body.insertAdjacentHTML('beforeend', `
+    doc.body.insertAdjacentHTML('beforeend', `
       <script type="module" src="${DSFR_JS_MODULE}"></script>
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
     `);
 
-    // Répondre avec du HTML propre
     const output = dom.serialize();
     res.removeHeader('Content-Encoding');
     res.removeHeader('Content-Length');
@@ -188,6 +172,21 @@ async function handleProxy(req, res) {
     console.error('Erreur proxy:', e);
     res.status(502).send(`Erreur proxy : ${e.message}`);
   }
+}
+
+function rewriteRelativeUrls(doc, selector, attr, baseHref, gristHost) {
+  doc.querySelectorAll(selector).forEach(el => {
+    const val = el.getAttribute(attr);
+    if (val && !val.startsWith('http') && !val.startsWith('//') && !val.startsWith('data:')) {
+      // Résoudre le chemin relatif par rapport au base href
+      const resolved = val.startsWith('/') ? val : baseHref + val;
+      el.setAttribute(attr, `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
+    }
+  });
+}
+
+function isAllowedHost(hostname) {
+  return ALLOWED_HOSTS.some(host => hostname === host || hostname.endsWith('.' + host));
 }
 
 function landingPage(req) {
