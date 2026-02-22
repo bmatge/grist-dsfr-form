@@ -74,6 +74,25 @@ async function handleProxy(req, res) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
+    // Réécrire les URLs relatives pour pointer vers le serveur Grist d'origine
+    const gristOrigin = parsed.origin;
+    doc.querySelectorAll('script[src]').forEach(el => {
+      const src = el.getAttribute('src');
+      if (src && src.startsWith('/')) el.setAttribute('src', gristOrigin + src);
+    });
+    doc.querySelectorAll('link[href]').forEach(el => {
+      const href = el.getAttribute('href');
+      if (href && href.startsWith('/')) el.setAttribute('href', gristOrigin + href);
+    });
+    doc.querySelectorAll('img[src]').forEach(el => {
+      const src = el.getAttribute('src');
+      if (src && src.startsWith('/')) el.setAttribute('src', gristOrigin + src);
+    });
+    doc.querySelectorAll('form[action]').forEach(el => {
+      const action = el.getAttribute('action');
+      if (action && action.startsWith('/')) el.setAttribute('action', gristOrigin + action);
+    });
+
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
     doc.documentElement.setAttribute('data-fr-scheme', 'light');
