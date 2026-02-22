@@ -20,6 +20,9 @@ const DSFR_ICONS = `https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@${DSFR_VERSION}/di
 const DSFR_JS_MODULE = `https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@${DSFR_VERSION}/dist/dsfr/dsfr.module.min.js`;
 const DSFR_JS_NOMODULE = `https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@${DSFR_VERSION}/dist/dsfr/dsfr.nomodule.min.js`;
 
+// Derrière un reverse proxy (Traefik), faire confiance au header X-Forwarded-Proto
+app.set('trust proxy', true);
+
 // Servir la CSS override en statique
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 
@@ -51,8 +54,12 @@ async function handleProxy(req, res) {
   }
 
   try {
+    // Demander du contenu non-compressé pour éviter les problèmes d'encodage
     const response = await fetch(formUrl, {
-      headers: { 'Accept': 'text/html' },
+      headers: {
+        'Accept': 'text/html',
+        'Accept-Encoding': 'identity',
+      },
     });
 
     if (!response.ok) {
@@ -88,8 +95,12 @@ async function handleProxy(req, res) {
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
     `);
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(dom.serialize());
+    // Répondre avec du HTML propre, sans headers d'encodage hérités
+    res
+      .removeHeader('Content-Encoding')
+      .removeHeader('Content-Length')
+      .setHeader('Content-Type', 'text/html; charset=utf-8')
+      .send(dom.serialize());
   } catch (e) {
     console.error('Erreur proxy:', e);
     res.status(502).send(`Erreur proxy : ${e.message}`);
