@@ -74,24 +74,19 @@ async function handleProxy(req, res) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Réécrire les URLs relatives pour pointer vers le serveur Grist d'origine
+    // Réécrire <base href> pour que toutes les URLs relatives pointent vers Grist
     const gristOrigin = parsed.origin;
-    doc.querySelectorAll('script[src]').forEach(el => {
-      const src = el.getAttribute('src');
-      if (src && src.startsWith('/')) el.setAttribute('src', gristOrigin + src);
-    });
-    doc.querySelectorAll('link[href]').forEach(el => {
-      const href = el.getAttribute('href');
-      if (href && href.startsWith('/')) el.setAttribute('href', gristOrigin + href);
-    });
-    doc.querySelectorAll('img[src]').forEach(el => {
-      const src = el.getAttribute('src');
-      if (src && src.startsWith('/')) el.setAttribute('src', gristOrigin + src);
-    });
-    doc.querySelectorAll('form[action]').forEach(el => {
-      const action = el.getAttribute('action');
-      if (action && action.startsWith('/')) el.setAttribute('action', gristOrigin + action);
-    });
+    const baseEl = doc.querySelector('base[href]');
+    if (baseEl) {
+      const baseHref = baseEl.getAttribute('href');
+      // Transformer le chemin relatif en URL absolue vers le serveur Grist
+      if (baseHref && !baseHref.startsWith('http')) {
+        baseEl.setAttribute('href', gristOrigin + baseHref);
+      }
+    } else {
+      // Pas de <base>, ajouter une qui pointe vers l'origin Grist
+      doc.head.insertAdjacentHTML('afterbegin', `<base href="${gristOrigin}/">`);
+    }
 
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
