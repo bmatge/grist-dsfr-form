@@ -34,8 +34,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir la CSS override en statique
-app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+// Cache-busting : timestamp au démarrage du serveur
+const BUILD_TS = Date.now();
+
+// Servir les fichiers statiques sans cache navigateur (cache-busting via query string)
+app.use('/static', express.static(path.join(__dirname, '..', 'public'), {
+  etag: false,
+  lastModified: false,
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 
 // Proxy des assets Grist — sert les fichiers statiques de Grist à travers
 // notre serveur pour satisfaire la CSP 'self' de Traefik
@@ -219,7 +228,7 @@ async function handleFormProxy(req, res) {
     doc.head.insertAdjacentHTML('beforeend', `
       <link rel="stylesheet" href="${DSFR_CSS}">
       <link rel="stylesheet" href="${DSFR_ICONS}">
-      <link rel="stylesheet" href="${proxyBaseUrl}/static/grist-dsfr-override.css">
+      <link rel="stylesheet" href="${proxyBaseUrl}/static/grist-dsfr-override.css?v=${BUILD_TS}">
       <meta name="theme-color" content="#000091">
       <meta name="viewport" content="width=device-width, initial-scale=1">
     `);
@@ -281,7 +290,7 @@ async function handleFormProxy(req, res) {
       </footer>
       <script type="module" src="${DSFR_JS_MODULE}"></script>
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
-      <script src="${proxyBaseUrl}/static/dsfr-transform.js" defer></script>
+      <script src="${proxyBaseUrl}/static/dsfr-transform.js?v=${BUILD_TS}" defer></script>
     `);
 
     const output = dom.serialize();
