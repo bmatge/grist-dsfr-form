@@ -23,6 +23,18 @@ const DSFR_JS_NOMODULE = `https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@${DSFR_VERSI
 // Derrière un reverse proxy (Traefik), faire confiance au header X-Forwarded-Proto
 app.set('trust proxy', true);
 
+// Headers de sécurité (remplace security-headers@file de Traefik
+// qui écrasait notre CSP adaptée au proxy Grist)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
+  res.setHeader('Permissions-Policy', 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
+  next();
+});
+
 // Servir la CSS override en statique
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 

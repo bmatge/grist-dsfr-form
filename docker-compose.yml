@@ -26,7 +26,9 @@ services:
       - "traefik.http.routers.gristform-https.tls=true"
       - "traefik.http.routers.gristform-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.gristform-https.tls.options=anssi-strict@file"
-      - "traefik.http.routers.gristform-https.middlewares=security-headers@file"
+      # Pas de security-headers@file ici : Express gère ses propres headers
+      # de sécurité avec une CSP adaptée au proxy Grist
+      #- "traefik.http.routers.gristform-https.middlewares=security-headers@file"
 
       # Service
       - "traefik.http.services.gristform.loadbalancer.server.port=3000"
