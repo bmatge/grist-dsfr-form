@@ -1,0 +1,10 @@
+services:
+  grist-dsfr-form:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - ALLOWED_HOSTS=grist.numerique.gouv.fr,docs.getgrist.com
+      # - DSFR_VERSION=1.14.3
+    restart: unless-stopped
