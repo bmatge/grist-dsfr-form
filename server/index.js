@@ -220,10 +220,64 @@ async function handleFormProxy(req, res) {
       <link rel="stylesheet" href="${DSFR_ICONS}">
       <link rel="stylesheet" href="${proxyBaseUrl}/static/grist-dsfr-override.css">
       <meta name="theme-color" content="#000091">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
     `);
 
-    // Injection JS avant </body>
+    // Extraire le titre du formulaire depuis le gristConfig ou le <title>
+    const titleEl = doc.querySelector('title');
+    const formTitle = titleEl ? titleEl.textContent.replace(' - Grist', '').replace('Grist Form', 'Formulaire').trim() : 'Formulaire';
+
+    // Injecter le header DSFR au début du body (avant les scripts Grist)
+    doc.body.insertAdjacentHTML('afterbegin', `
+      <header role="banner" class="fr-header" id="dsfr-header">
+        <div class="fr-header__body">
+          <div class="fr-container">
+            <div class="fr-header__body-row">
+              <div class="fr-header__brand fr-enlarge-link">
+                <div class="fr-header__brand-top">
+                  <div class="fr-header__logo">
+                    <p class="fr-logo">République<br>Française</p>
+                  </div>
+                </div>
+                <div class="fr-header__service">
+                  <a href="/" title="Accueil">
+                    <p class="fr-header__service-title">${formTitle}</p>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+    `);
+
+    // Injecter le footer DSFR et le JS à la fin du body
     doc.body.insertAdjacentHTML('beforeend', `
+      <footer class="fr-footer" role="contentinfo" id="dsfr-footer">
+        <div class="fr-container">
+          <div class="fr-footer__body">
+            <div class="fr-footer__brand fr-enlarge-link">
+              <p class="fr-logo">République<br>Française</p>
+            </div>
+            <div class="fr-footer__content">
+              <p class="fr-footer__content-desc">
+                Formulaire propulsé par <a href="https://www.getgrist.com" target="_blank" rel="noopener">Grist</a>
+                — Style DSFR appliqué par le proxy
+              </p>
+            </div>
+          </div>
+          <div class="fr-footer__bottom">
+            <ul class="fr-footer__bottom-list">
+              <li class="fr-footer__bottom-item">
+                <a class="fr-footer__bottom-link" href="https://www.getgrist.com/forms/" target="_blank" rel="noopener">Grist Forms</a>
+              </li>
+              <li class="fr-footer__bottom-item">
+                <a class="fr-footer__bottom-link" href="https://www.systeme-de-design.gouv.fr/" target="_blank" rel="noopener">DSFR</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </footer>
       <script type="module" src="${DSFR_JS_MODULE}"></script>
       <script nomodule src="${DSFR_JS_NOMODULE}"></script>
     `);

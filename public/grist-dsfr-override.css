@@ -55,10 +55,27 @@ html[data-grist-form] body {
 }
 
 /* ==========================================================================
-   Suppression du cadre Grist (bordure verte + barre "Grist Form")
+   Layout général : page flex avec header/footer DSFR
    ========================================================================== */
 
-/* Le conteneur de framing (bordure verte, border-radius, etc.) */
+html[data-grist-form] body {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+}
+
+/* Le conteneur React de Grist — devient le main content qui s'étend */
+html[data-grist-form] body > div:not(#dsfr-header):not(#dsfr-footer):not(.fr-header):not(.fr-footer) {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* ==========================================================================
+   Suppression du cadre Grist (bordure bleue + barre "Grist Form")
+   ========================================================================== */
+
+/* Tout le framing Grist — supprimer bordures, padding, arrondis */
 html[data-grist-form] [data-testid="test-form-framing"] {
   border: none !important;
   border-top: none !important;
@@ -66,44 +83,49 @@ html[data-grist-form] [data-testid="test-form-framing"] {
   padding: 0 !important;
   max-width: 100% !important;
   background: transparent !important;
+  box-shadow: none !important;
+  margin: 0 !important;
 }
 
-/* La barre "Grist Form" en haut (cssFormBorderHelp) */
+/* La barre "Grist Form" dans le bandeau bleu — masquer */
 html[data-grist-form] [data-testid="test-form-framing"] > div:first-child {
   display: none !important;
 }
 
-/* ==========================================================================
-   Conteneur du formulaire
-   ========================================================================== */
-
-/* Page container */
-html[data-grist-form] body > div {
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
+/* Le footer Grist natif "Powered by Grist" — masquer (remplacé par le footer DSFR) */
+html[data-grist-form] [data-testid="test-form-page"] {
+  display: none !important;
 }
 
-/* Le wrapper principal autour de main */
+/* ==========================================================================
+   Grille DSFR autour du formulaire
+   ========================================================================== */
+
+/* Le wrapper <main> qui contient le form — grille DSFR centrée */
 html[data-grist-form] main {
   flex: 1 !important;
   display: flex !important;
   justify-content: center !important;
-  padding: var(--dsfr-spacing-8v) var(--dsfr-spacing-4v) !important;
+  padding: 2rem 1rem !important;
+  max-width: 78rem !important;  /* fr-container max-width */
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-/* Le formulaire lui-même */
+/* Le formulaire lui-même — carte blanche centrée */
 html[data-grist-form] form {
   max-width: 48rem !important;
   width: 100% !important;
-  padding: var(--dsfr-spacing-8v) !important;
+  padding: 2rem !important;
   background: var(--dsfr-background-default) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 18, 0.16) !important;
   border-radius: 0 !important;
   box-sizing: border-box !important;
 }
 
-/* Sections (div avec bordure dans le formulaire) */
+/* Sections dans le formulaire */
 html[data-grist-form] form > div {
   margin-bottom: var(--dsfr-spacing-6v) !important;
 }
@@ -505,21 +527,10 @@ html[data-grist-form] form hr {
 }
 
 /* ==========================================================================
-   Footer (Powered by Grist)
+   Footer DSFR (injecté par le proxy — le footer Grist natif est masqué)
    ========================================================================== */
 
-html[data-grist-form] footer {
-  text-align: center !important;
-  padding: var(--dsfr-spacing-4v) !important;
-  font-size: 0.75rem !important;
-  color: var(--dsfr-text-mention) !important;
-  font-family: var(--dsfr-font-family) !important;
-}
-
-html[data-grist-form] footer a {
-  color: var(--dsfr-text-mention) !important;
-  font-size: 0.75rem !important;
-}
+/* Le footer DSFR est géré nativement par les classes fr-footer */
 
 /* ==========================================================================
    Page de succès
@@ -558,11 +569,11 @@ html[data-grist-form] form *:focus-visible {
 
 @media (max-width: 48rem) {
   html[data-grist-form] form {
-    margin: var(--dsfr-spacing-4v) !important;
-    padding: var(--dsfr-spacing-4v) !important;
+    padding: 1.5rem 1rem !important;
+    box-shadow: none !important;
   }
 
   html[data-grist-form] main {
-    padding: var(--dsfr-spacing-4v) 0 !important;
+    padding: 1rem 0 !important;
   }
 }
