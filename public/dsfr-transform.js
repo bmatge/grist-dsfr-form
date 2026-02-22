@@ -272,28 +272,58 @@
 
   /**
    * Le titre et la description du formulaire sont rendus par Grist
-   * en dehors du <form>, dans un div frère. On les récupère ici.
+   * en dehors du <form>, dans un div frère (parfois à plusieurs niveaux).
+   *
+   * Stratégie : remonter les ancêtres du <form> et chercher un <h1>
+   * dans les frères précédents, puis fallback sur <title>.
    */
   function extractFormTitle(form) {
-    const parent = form.parentElement;
-    if (!parent) return null;
+    // Stratégie 1 : remonter les ancêtres du form et chercher un h1 frère
+    let current = form;
+    while (current && current !== document.body) {
+      const parent = current.parentElement;
+      if (!parent) break;
 
-    for (const sibling of parent.children) {
-      if (sibling === form) break; // ne regarder que les éléments avant le form
-      const heading = sibling.querySelector('h1, h2, h3');
-      if (heading) {
-        const paragraphs = sibling.querySelectorAll('p');
-        return {
-          type: 'header',
-          level: parseInt(heading.tagName[1]),
-          title: heading.textContent.trim(),
-          description: Array.from(paragraphs)
-            .map(p => p.textContent.trim())
-            .filter(Boolean)
-            .join('\n'),
-        };
+      for (const sibling of parent.children) {
+        if (sibling === current || sibling.contains(current)) continue;
+        // Ignorer nos éléments DSFR injectés
+        if (sibling.closest('.fr-header, .fr-footer, #dsfr-main')) continue;
+        if (sibling.classList?.contains('fr-header') || sibling.classList?.contains('fr-footer')) continue;
+
+        const heading = sibling.querySelector('h1, h2, h3');
+        if (heading) {
+          const container = heading.closest('div') || heading.parentElement;
+          const paragraphs = container ? container.querySelectorAll('p') : [];
+          console.log('[DSFR] Titre trouvé:', heading.textContent.trim());
+          return {
+            type: 'header',
+            level: parseInt(heading.tagName[1]),
+            title: heading.textContent.trim(),
+            description: Array.from(paragraphs)
+              .map(p => p.textContent.trim())
+              .filter(Boolean)
+              .join('\n'),
+          };
+        }
+      }
+
+      current = parent;
+    }
+
+    // Stratégie 2 : fallback sur le <title> de la page (mis à jour par form.bundle.js)
+    const titleEl = document.querySelector('title');
+    if (titleEl) {
+      const text = titleEl.textContent
+        .replace(/\s*-\s*Grist$/, '')
+        .replace('Grist Form', '')
+        .trim();
+      if (text) {
+        console.log('[DSFR] Titre depuis <title>:', text);
+        return { type: 'header', level: 1, title: text, description: '' };
       }
     }
+
+    console.warn('[DSFR] Aucun titre trouvé');
     return null;
   }
 
@@ -303,6 +333,7 @@
     const main = document.createElement('main');
     main.id = 'dsfr-main';
     main.className = 'fr-py-6w';
+    main.style.padding = '3rem 1rem';
 
     const container = document.createElement('div');
     container.className = 'fr-container';
@@ -311,7 +342,8 @@
     row.className = 'fr-grid-row fr-grid-row--center';
 
     const col = document.createElement('div');
-    col.className = 'fr-col-12 fr-col-md-10 fr-col-lg-8 fr-p-3w';
+    col.className = 'fr-col-12 fr-col-md-10 fr-col-lg-8';
+    col.style.padding = '2rem';
 
     const form = document.createElement('form');
     form.id = 'dsfr-form';
