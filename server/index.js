@@ -70,6 +70,58 @@ app.get('/grist-assets/:gristHost/*', async (req, res) => {
   }
 });
 
+// Proxy API Grist — les appels API de form.bundle.js passent par ici
+// pour éviter les problèmes CORS (même origin)
+app.all('/o/*/api/*', proxyApiToGrist);
+app.all('/api/*', proxyApiToGrist);
+
+async function proxyApiToGrist(req, res) {
+  const gristHost = req.query.host || ALLOWED_HOSTS[0];
+
+  if (!isAllowedHost(gristHost)) {
+    return res.status(403).send('Domaine non autorisé');
+  }
+
+  try {
+    // Construire l'URL Grist en conservant le path et les query params (sauf host)
+    const url = new URL(`https://${gristHost}${req.path}`);
+    for (const [key, val] of Object.entries(req.query)) {
+      if (key !== 'host') url.searchParams.set(key, val);
+    }
+
+    const headers = { 'Accept-Encoding': 'identity' };
+    // Transmettre le Content-Type si présent (POST/PUT)
+    if (req.headers['content-type']) {
+      headers['Content-Type'] = req.headers['content-type'];
+    }
+
+    const fetchOpts = {
+      method: req.method,
+      headers,
+    };
+
+    // Transmettre le body pour POST/PUT/PATCH
+    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      fetchOpts.body = Buffer.concat(chunks);
+    }
+
+    const response = await fetch(url.toString(), fetchOpts);
+
+    const contentType = response.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+    res.status(response.status);
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.write(buffer);
+    res.end();
+  } catch (e) {
+    console.error('Erreur proxy API:', e);
+    res.status(502).send('Erreur proxy API');
+  }
+}
+
 // Page d'accueil — avec ?url= on redirige vers le bon chemin
 app.get('/', (req, res) => {
   if (!req.query.url) {
@@ -96,14 +148,11 @@ app.get('/', (req, res) => {
 });
 
 // Route principale : proxy du formulaire Grist au même chemin
-// Grist utilise window.location.pathname pour parser l'URL state,
-// donc on doit servir le HTML au même chemin que sur le serveur Grist
+// Grist utilise window.location.pathname pour parser l'URL state
 app.get('/o/*/forms/*', handleFormProxy);
-// Certains formulaires utilisent /forms/ sans /o/org/
 app.get('/forms/*', handleFormProxy);
 
 async function handleFormProxy(req, res) {
-  // Le host Grist vient du query param ?host= (posé par la redirection depuis /?url=)
   const gristHost = req.query.host || ALLOWED_HOSTS[0];
 
   if (!isAllowedHost(gristHost)) {
@@ -111,6 +160,7 @@ async function handleFormProxy(req, res) {
   }
 
   const formUrl = `https://${gristHost}${req.path}`;
+  const proxyBaseUrl = `${req.protocol}://${req.get('host')}`;
 
   try {
     const response = await fetch(formUrl, {
@@ -132,17 +182,33 @@ async function handleFormProxy(req, res) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Récupérer le base href pour résoudre les chemins relatifs
+    // Réécrire <base href> pour pointer vers notre proxy d'assets (même origin → CSP OK)
+    // Cela résout automatiquement TOUS les chemins relatifs (scripts, CSS, locales, images)
     const baseEl = doc.querySelector('base[href]');
-    const baseHref = baseEl ? baseEl.getAttribute('href') : '/';
+    const originalBase = baseEl ? baseEl.getAttribute('href') : '/';
+    const proxyBase = `/grist-assets/${gristHost}/${originalBase.replace(/^\/+/, '')}`;
+    if (baseEl) {
+      baseEl.setAttribute('href', proxyBase);
+    } else {
+      doc.head.insertAdjacentHTML('afterbegin', `<base href="${proxyBase}">`);
+    }
 
-    // Supprimer <base> (bloqué par CSP base-uri 'self')
-    if (baseEl) baseEl.remove();
-
-    // Réécrire les URLs relatives pour passer par notre proxy d'assets
-    rewriteRelativeUrls(doc, 'script[src]', 'src', baseHref, gristHost);
-    rewriteRelativeUrls(doc, 'link[href]', 'href', baseHref, gristHost);
-    rewriteRelativeUrls(doc, 'img[src]', 'src', baseHref, gristHost);
+    // Modifier gristConfig pour que les appels API passent par notre proxy
+    doc.querySelectorAll('script').forEach(script => {
+      const text = script.textContent;
+      if (text && text.includes('window.gristConfig')) {
+        // Réécrire homeUrl vers notre proxy et activer serveSameOrigin
+        let modified = text.replace(
+          /"homeUrl"\s*:\s*"[^"]+"/,
+          `"homeUrl":"${proxyBaseUrl}/"`
+        );
+        modified = modified.replace(
+          /"serveSameOrigin"\s*:\s*false/,
+          '"serveSameOrigin":true'
+        );
+        script.textContent = modified;
+      }
+    });
 
     // Attributs <html>
     doc.documentElement.setAttribute('lang', 'fr');
@@ -152,7 +218,7 @@ async function handleFormProxy(req, res) {
     doc.head.insertAdjacentHTML('beforeend', `
       <link rel="stylesheet" href="${DSFR_CSS}">
       <link rel="stylesheet" href="${DSFR_ICONS}">
-      <link rel="stylesheet" href="/static/grist-dsfr-override.css">
+      <link rel="stylesheet" href="${proxyBaseUrl}/static/grist-dsfr-override.css">
       <meta name="theme-color" content="#000091">
     `);
 
@@ -172,17 +238,6 @@ async function handleFormProxy(req, res) {
     console.error('Erreur proxy:', e);
     res.status(502).send(`Erreur proxy : ${e.message}`);
   }
-}
-
-function rewriteRelativeUrls(doc, selector, attr, baseHref, gristHost) {
-  doc.querySelectorAll(selector).forEach(el => {
-    const val = el.getAttribute(attr);
-    if (val && !val.startsWith('http') && !val.startsWith('//') && !val.startsWith('data:')) {
-      // Résoudre le chemin relatif par rapport au base href
-      const resolved = val.startsWith('/') ? val : baseHref + val;
-      el.setAttribute(attr, `/grist-assets/${gristHost}/${resolved.replace(/^\/+/, '')}`);
-    }
-  });
 }
 
 function isAllowedHost(hostname) {
