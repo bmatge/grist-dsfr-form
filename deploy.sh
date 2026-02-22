@@ -18,8 +18,9 @@ docker compose down
 docker compose up -d
 
 echo "4/4 — Vérification..."
-sleep 3
-if docker compose ps --format json | grep -q '"running"\|"Up"'; then
+sleep 5
+RUNNING=$(docker inspect --format='{{.State.Running}}' grist-dsfr-form 2>/dev/null || echo "false")
+if [ "$RUNNING" = "true" ]; then
   echo ""
   echo "OK — Le service est en ligne."
   echo "URL : https://gristformproxy.matge.com"
@@ -28,8 +29,9 @@ if docker compose ps --format json | grep -q '"running"\|"Up"'; then
   echo "  https://gristformproxy.matge.com/?url=https://grist.numerique.gouv.fr/forms/VOTRE_FORM_ID/1"
 else
   echo ""
-  echo "Statut conteneur :"
+  echo "ERREUR — Le conteneur ne tourne pas."
   docker compose ps
   echo ""
   docker compose logs --tail 20
+  exit 1
 fi
