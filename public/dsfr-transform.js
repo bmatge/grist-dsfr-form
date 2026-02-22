@@ -438,7 +438,7 @@
         const g = el('div', 'fr-form-group fr-mb-3w');
         g.innerHTML = `
           <fieldset class="fr-fieldset" aria-labelledby="${id}-legend">
-            <legend class="fr-fieldset__legend--regular fr-fieldset__legend" id="${id}-legend">
+            <legend class="fr-fieldset__legend--regular fr-fieldset__legend fr-h4" id="${id}-legend">
               ${esc(field.label)}${reqHtml}${hintHtml}
             </legend>
             <div class="fr-fieldset__content">
@@ -457,7 +457,7 @@
         const g = el('div', 'fr-form-group fr-mb-3w');
         g.innerHTML = `
           <fieldset class="fr-fieldset" aria-labelledby="${id}-legend">
-            <legend class="fr-fieldset__legend--regular fr-fieldset__legend" id="${id}-legend">
+            <legend class="fr-fieldset__legend--regular fr-fieldset__legend fr-h4" id="${id}-legend">
               ${esc(field.label)}${reqHtml}${hintHtml}
             </legend>
             <div class="fr-fieldset__content">

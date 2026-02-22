@@ -25,3 +25,11 @@ body {
   flex: 1;
   overflow: visible !important;
 }
+
+/* Empêcher le rognage des indicateurs radio/checkbox DSFR */
+#dsfr-form .fr-fieldset,
+#dsfr-form .fr-fieldset__content,
+#dsfr-form .fr-radio-group,
+#dsfr-form .fr-checkbox-group {
+  overflow: visible !important;
+}
