@@ -1,10 +1,40 @@
 services:
   grist-dsfr-form:
     build: .
-    ports:
-      - "3000:3000"
+    container_name: grist-dsfr-form
+    restart: unless-stopped
+
     environment:
       - PORT=3000
       - ALLOWED_HOSTS=grist.numerique.gouv.fr,docs.getgrist.com
       # - DSFR_VERSION=1.14.3
-    restart: unless-stopped
+
+    networks:
+      - ecosystem-network
+
+    labels:
+      - "traefik.enable=true"
+
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.gristform-http.rule=Host(`gristformproxy.matge.com`)"
+      - "traefik.http.routers.gristform-http.entrypoints=web"
+      - "traefik.http.routers.gristform-http.middlewares=redirect-to-https"
+
+      # HTTPS router
+      - "traefik.http.routers.gristform-https.rule=Host(`gristformproxy.matge.com`)"
+      - "traefik.http.routers.gristform-https.entrypoints=websecure"
+      - "traefik.http.routers.gristform-https.tls=true"
+      - "traefik.http.routers.gristform-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gristform-https.tls.options=anssi-strict@file"
+      - "traefik.http.routers.gristform-https.middlewares=security-headers@file"
+
+      # Service
+      - "traefik.http.services.gristform.loadbalancer.server.port=3000"
+
+      # Redirect middleware
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+networks:
+  ecosystem-network:
+    external: true
