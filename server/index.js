@@ -96,11 +96,10 @@ async function handleProxy(req, res) {
     `);
 
     // Répondre avec du HTML propre, sans headers d'encodage hérités
-    res
-      .removeHeader('Content-Encoding')
-      .removeHeader('Content-Length')
-      .setHeader('Content-Type', 'text/html; charset=utf-8')
-      .send(dom.serialize());
+    res.removeHeader('Content-Encoding');
+    res.removeHeader('Content-Length');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(dom.serialize());
   } catch (e) {
     console.error('Erreur proxy:', e);
     res.status(502).send(`Erreur proxy : ${e.message}`);
