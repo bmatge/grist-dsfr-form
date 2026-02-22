@@ -1,0 +1,544 @@
+/**
+ * DSFR Override pour formulaires Grist natifs
+ *
+ * Ce fichier applique les styles du Système de Design de l'État (DSFR)
+ * aux éléments HTML du formulaire Grist publié.
+ *
+ * Les sélecteurs ciblent les éléments HTML natifs car les classes CSS-in-JS
+ * de Grist sont générées dynamiquement et peu stables.
+ *
+ * Toutes les règles utilisent !important comme recommandé par Grist.
+ */
+
+/* ==========================================================================
+   Variables DSFR
+   ========================================================================== */
+
+:root {
+  --dsfr-blue-france: #000091;
+  --dsfr-blue-france-hover: #1212FF;
+  --dsfr-blue-france-active: #2323FF;
+  --dsfr-text-default: #161616;
+  --dsfr-text-mention: #666666;
+  --dsfr-text-label: #161616;
+  --dsfr-border-default: #929292;
+  --dsfr-border-active: var(--dsfr-blue-france);
+  --dsfr-background-default: #ffffff;
+  --dsfr-background-alt: #F6F6F6;
+  --dsfr-background-contrast: #EEEEEE;
+  --dsfr-error: #CE0500;
+  --dsfr-success: #18753C;
+  --dsfr-info: #0063CB;
+  --dsfr-font-family: "Marianne", arial, sans-serif;
+  --dsfr-spacing-1v: 0.25rem;
+  --dsfr-spacing-2v: 0.5rem;
+  --dsfr-spacing-3v: 0.75rem;
+  --dsfr-spacing-4v: 1rem;
+  --dsfr-spacing-6v: 1.5rem;
+  --dsfr-spacing-8v: 2rem;
+}
+
+/* ==========================================================================
+   Base / Typographie
+   ========================================================================== */
+
+body {
+  font-family: var(--dsfr-font-family) !important;
+  color: var(--dsfr-text-default) !important;
+  background-color: var(--dsfr-background-alt) !important;
+  line-height: 1.5 !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* ==========================================================================
+   Conteneur du formulaire
+   ========================================================================== */
+
+main {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+}
+
+/* Conteneur principal du formulaire Grist (cssFormContainer = 600px) */
+form {
+  max-width: 48rem !important;
+  margin: var(--dsfr-spacing-8v) auto !important;
+  padding: var(--dsfr-spacing-8v) !important;
+  background: var(--dsfr-background-default) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 18, 0.16) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   Labels
+   ========================================================================== */
+
+form label {
+  display: block !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  font-weight: 700 !important;
+  color: var(--dsfr-text-label) !important;
+  margin-bottom: var(--dsfr-spacing-1v) !important;
+}
+
+/* Labels pour radio/checkbox — inline, poids normal */
+form [role="group"] label,
+form [role="radiogroup"] label {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: var(--dsfr-spacing-3v) !important;
+  font-weight: 400 !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  cursor: pointer !important;
+  padding: var(--dsfr-spacing-2v) 0 !important;
+}
+
+/* ==========================================================================
+   Descriptions (hint text)
+   ========================================================================== */
+
+/* Les descriptions Grist utilisent cssDesc — style italic, 12px */
+form label + div[style],
+form [class*="Desc"] {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: var(--dsfr-text-mention) !important;
+  font-style: normal !important;
+  margin-top: var(--dsfr-spacing-1v) !important;
+  margin-bottom: var(--dsfr-spacing-2v) !important;
+}
+
+/* ==========================================================================
+   Champs de saisie (Input, Textarea, Select)
+   ========================================================================== */
+
+form input[type="text"],
+form input[type="number"],
+form input[type="email"],
+form input[type="tel"],
+form input[type="url"],
+form input[type="password"],
+form input[type="date"],
+form input[type="datetime-local"],
+form input[type="time"] {
+  display: block !important;
+  width: 100% !important;
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  padding: var(--dsfr-spacing-2v) var(--dsfr-spacing-4v) !important;
+  height: 2.5rem !important;
+  background-color: var(--dsfr-background-default) !important;
+  border: 1px solid var(--dsfr-border-default) !important;
+  border-radius: 0.25rem 0.25rem 0 0 !important;
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-default) !important;
+  outline: none !important;
+  color: var(--dsfr-text-default) !important;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+form input[type="text"]:focus,
+form input[type="number"]:focus,
+form input[type="email"]:focus,
+form input[type="tel"]:focus,
+form input[type="url"]:focus,
+form input[type="password"]:focus,
+form input[type="date"]:focus,
+form input[type="datetime-local"]:focus,
+form input[type="time"]:focus {
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-active) !important;
+  border-color: var(--dsfr-border-active) !important;
+}
+
+form textarea {
+  display: block !important;
+  width: 100% !important;
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  padding: var(--dsfr-spacing-2v) var(--dsfr-spacing-4v) !important;
+  min-height: 10rem !important;
+  background-color: var(--dsfr-background-default) !important;
+  border: 1px solid var(--dsfr-border-default) !important;
+  border-radius: 0.25rem 0.25rem 0 0 !important;
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-default) !important;
+  outline: none !important;
+  color: var(--dsfr-text-default) !important;
+  box-sizing: border-box !important;
+  resize: vertical !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+form textarea:focus {
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-active) !important;
+  border-color: var(--dsfr-border-active) !important;
+}
+
+/* ==========================================================================
+   Select
+   ========================================================================== */
+
+form select {
+  display: block !important;
+  width: 100% !important;
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  padding: var(--dsfr-spacing-2v) var(--dsfr-spacing-4v) !important;
+  padding-right: 2.5rem !important;
+  height: 2.5rem !important;
+  background-color: var(--dsfr-background-default) !important;
+  border: 1px solid var(--dsfr-border-default) !important;
+  border-radius: 0.25rem 0.25rem 0 0 !important;
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-default) !important;
+  outline: none !important;
+  color: var(--dsfr-text-default) !important;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'%3E%3Cpath fill='%23161616' d='M12 16l-6-6h12z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  cursor: pointer !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+form select:focus {
+  box-shadow: inset 0 -2px 0 0 var(--dsfr-border-active) !important;
+  border-color: var(--dsfr-border-active) !important;
+}
+
+/* ==========================================================================
+   Radio buttons
+   ========================================================================== */
+
+form input[type="radio"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  border: 1px solid var(--dsfr-border-default) !important;
+  border-radius: 50% !important;
+  background-color: var(--dsfr-background-default) !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  position: relative !important;
+  transition: border-color 0.2s ease !important;
+}
+
+form input[type="radio"]:checked {
+  border-color: var(--dsfr-blue-france) !important;
+  border-width: 6px !important;
+}
+
+form input[type="radio"]:focus-visible {
+  outline: 2px solid var(--dsfr-blue-france) !important;
+  outline-offset: 2px !important;
+}
+
+/* Groupe radio */
+form [role="group"]:has(input[type="radio"]),
+form [role="radiogroup"] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ==========================================================================
+   Checkboxes
+   ========================================================================== */
+
+form input[type="checkbox"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  min-width: 1.5rem !important;
+  border: 1px solid var(--dsfr-border-default) !important;
+  border-radius: 0.25rem !important;
+  background-color: var(--dsfr-background-default) !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  position: relative !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+form input[type="checkbox"]:checked {
+  background-color: var(--dsfr-blue-france) !important;
+  border-color: var(--dsfr-blue-france) !important;
+}
+
+form input[type="checkbox"]:checked::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 0.4rem !important;
+  top: 0.15rem !important;
+  width: 0.4rem !important;
+  height: 0.7rem !important;
+  border: solid white !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: rotate(45deg) !important;
+}
+
+form input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--dsfr-blue-france) !important;
+  outline-offset: 2px !important;
+}
+
+/* Groupe checkbox */
+form [role="group"]:has(input[type="checkbox"]) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ==========================================================================
+   Toggle / Switch (type checkbox utilisé comme toggle dans Grist)
+   ========================================================================== */
+
+/* Le toggle Grist utilise un layout grid avec checkbox — on le laisse
+   en checkbox DSFR standard, c'est plus cohérent avec le DSFR */
+
+/* ==========================================================================
+   Upload de fichiers
+   ========================================================================== */
+
+form input[type="file"] {
+  display: block !important;
+  width: 100% !important;
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 1rem !important;
+  color: var(--dsfr-text-default) !important;
+  padding: var(--dsfr-spacing-2v) 0 !important;
+  cursor: pointer !important;
+}
+
+form input[type="file"]::file-selector-button {
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: var(--dsfr-blue-france) !important;
+  background-color: var(--dsfr-background-default) !important;
+  border: 1px solid var(--dsfr-blue-france) !important;
+  border-radius: 0.25rem !important;
+  padding: var(--dsfr-spacing-1v) var(--dsfr-spacing-4v) !important;
+  cursor: pointer !important;
+  margin-right: var(--dsfr-spacing-4v) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+form input[type="file"]::file-selector-button:hover {
+  background-color: var(--dsfr-background-alt) !important;
+}
+
+/* ==========================================================================
+   Bouton de soumission
+   ========================================================================== */
+
+form button[type="submit"],
+form input[type="submit"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  line-height: 1.5rem !important;
+  padding: var(--dsfr-spacing-2v) var(--dsfr-spacing-6v) !important;
+  min-height: 2.5rem !important;
+  color: #ffffff !important;
+  background-color: var(--dsfr-blue-france) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: background-color 0.2s ease !important;
+  margin-top: var(--dsfr-spacing-6v) !important;
+}
+
+form button[type="submit"]:hover,
+form input[type="submit"]:hover {
+  background-color: var(--dsfr-blue-france-hover) !important;
+}
+
+form button[type="submit"]:active,
+form input[type="submit"]:active {
+  background-color: var(--dsfr-blue-france-active) !important;
+}
+
+form button[type="submit"]:disabled,
+form input[type="submit"]:disabled {
+  background-color: var(--dsfr-background-contrast) !important;
+  color: var(--dsfr-text-mention) !important;
+  cursor: not-allowed !important;
+}
+
+form button[type="submit"]:focus-visible,
+form input[type="submit"]:focus-visible {
+  outline: 2px solid var(--dsfr-blue-france) !important;
+  outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   Required indicator
+   ========================================================================== */
+
+/* L'indicateur requis de Grist utilise ::after avec content: "*" */
+/* On change la couleur en rouge DSFR */
+[class*="required"]::after,
+[class*="Required"]::after {
+  color: var(--dsfr-error) !important;
+  font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   Espacement des questions/champs
+   ========================================================================== */
+
+/* Chaque bloc de question dans le formulaire Grist */
+form > div {
+  margin-bottom: var(--dsfr-spacing-6v) !important;
+}
+
+/* Sections du formulaire */
+form > div > div {
+  margin-bottom: var(--dsfr-spacing-4v) !important;
+}
+
+/* ==========================================================================
+   En-têtes et paragraphes (Markdown)
+   ========================================================================== */
+
+form h1, form h2, form h3 {
+  font-family: var(--dsfr-font-family) !important;
+  color: var(--dsfr-text-default) !important;
+}
+
+form h1 {
+  font-size: 2rem !important;
+  line-height: 2.5rem !important;
+  font-weight: 700 !important;
+  margin-bottom: var(--dsfr-spacing-4v) !important;
+}
+
+form h2 {
+  font-size: 1.5rem !important;
+  line-height: 2rem !important;
+  font-weight: 700 !important;
+  margin-bottom: var(--dsfr-spacing-3v) !important;
+}
+
+form h3 {
+  font-size: 1.25rem !important;
+  line-height: 1.75rem !important;
+  font-weight: 700 !important;
+  margin-bottom: var(--dsfr-spacing-2v) !important;
+}
+
+form p {
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  color: var(--dsfr-text-default) !important;
+  margin-bottom: var(--dsfr-spacing-3v) !important;
+}
+
+form hr {
+  border: none !important;
+  border-top: 1px solid var(--dsfr-border-default) !important;
+  margin: var(--dsfr-spacing-6v) 0 !important;
+}
+
+/* ==========================================================================
+   Page de succès
+   ========================================================================== */
+
+.test-form-success-page,
+[class*="success"] {
+  text-align: center !important;
+  padding: var(--dsfr-spacing-8v) !important;
+}
+
+.test-form-success-page-text,
+[class*="success"] p {
+  font-size: 1.125rem !important;
+  color: var(--dsfr-success) !important;
+  font-weight: 500 !important;
+}
+
+/* ==========================================================================
+   Page d'erreur
+   ========================================================================== */
+
+.test-form-error-page,
+[class*="error-page"] {
+  text-align: center !important;
+  padding: var(--dsfr-spacing-8v) !important;
+}
+
+.test-form-error-page-text,
+[class*="error-page"] p {
+  font-size: 1rem !important;
+  color: var(--dsfr-error) !important;
+}
+
+/* ==========================================================================
+   Bouton Reset
+   ========================================================================== */
+
+.test-form-reset,
+[class*="reset"] button {
+  font-family: var(--dsfr-font-family) !important;
+  font-size: 0.875rem !important;
+  color: var(--dsfr-blue-france) !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  text-decoration: underline !important;
+  padding: var(--dsfr-spacing-2v) 0 !important;
+}
+
+/* ==========================================================================
+   Footer (Powered by Grist)
+   ========================================================================== */
+
+footer {
+  text-align: center !important;
+  padding: var(--dsfr-spacing-4v) !important;
+  font-size: 0.75rem !important;
+  color: var(--dsfr-text-mention) !important;
+}
+
+/* ==========================================================================
+   Focus visible global
+   ========================================================================== */
+
+form *:focus-visible {
+  outline: 2px solid var(--dsfr-blue-france) !important;
+  outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 48rem) {
+  form {
+    margin: var(--dsfr-spacing-4v) !important;
+    padding: var(--dsfr-spacing-4v) !important;
+  }
+}
